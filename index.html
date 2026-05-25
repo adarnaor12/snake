@@ -131,7 +131,7 @@
 
   <div class="overlay" id="overlay">
     <div class="big-emoji" id="emoji">🐍</div>
-    <h2 id="ovTitle">מוכן לשחק, נחל לין?</h2>
+    <h2 id="ovTitle">מוכן לשחק?</h2>
     <p id="ovText">החלק למעלה / למטה / ימינה / שמאלה כדי להזיז את הנחש. אכל את 🍎 כדי לגדול. אל תתנגש בעצמך!</p>
     <div class="final-score" id="finalScore"></div>
     <button class="play" id="playBtn">התחל</button>
@@ -211,6 +211,7 @@
       if (speed > 70) speed -= 4;
       placeFood();
       buzz(12);
+      soundEat();
     } else {
       snake.pop();
     }
@@ -284,6 +285,7 @@
   }
 
   function start() {
+    initAudio();
     cancelAnimationFrame(raf);
     reset();
     overlay.classList.add('hidden');
@@ -293,13 +295,14 @@
   function gameOver() {
     alive = false;
     buzz([30, 40, 30]);
+    soundOver();
     if (score > best) {
       best = score;
       lsSet('snakeBest', best);
       bestEl.textContent = best;
     }
     emoji.textContent = score > 0 ? '🎉' : '💀';
-    ovTitle.textContent = 'נגמר, נחל לין!';
+    ovTitle.textContent = 'נגמר!';
     ovText.textContent = score >= 15 ? 'וואו, אלוף! 🔥' : 'נסה שוב, אתה יכול יותר 💪';
     finalScore.textContent = 'ניקוד: ' + score + (score === best && score > 0 ? '  •  שיא חדש! 🏆' : '');
     overlay.classList.remove('hidden');
@@ -313,6 +316,32 @@
   }
 
   function buzz(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+
+  // ---- sound (Web Audio, no files needed) ----
+  let audioCtx = null;
+  function initAudio() {
+    try {
+      if (!audioCtx) { const AC = window.AudioContext || window.webkitAudioContext; audioCtx = new AC(); }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch (e) { audioCtx = null; }
+  }
+  function tone(freq, dur, type, vol, when) {
+    if (!audioCtx) return;
+    try {
+      const t0 = audioCtx.currentTime + (when || 0);
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = type || 'square';
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(0.0001, t0);
+      gain.gain.exponentialRampToValueAtTime(vol || 0.15, t0 + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(t0); osc.stop(t0 + dur + 0.03);
+    } catch (e) {}
+  }
+  function soundEat() { tone(660, 0.09, 'square', 0.18, 0); tone(990, 0.10, 'square', 0.18, 0.07); }
+  function soundOver() { tone(330, 0.18, 'sawtooth', 0.2, 0); tone(220, 0.22, 'sawtooth', 0.2, 0.16); tone(150, 0.32, 'sawtooth', 0.2, 0.34); }
 
   // ---- swipe controls ----
   let tsx = 0, tsy = 0;
